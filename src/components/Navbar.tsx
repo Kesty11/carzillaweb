@@ -64,47 +64,47 @@ export default function Navbar() {
                 >
                   <Menu.Items className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <Menu.Item>
-                      {({ active }) => (
+                      {() => (
                         <span className="block px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
                           {currentUser.displayName || currentUser.email}
                         </span>
                       )}
                     </Menu.Item>
                     <Menu.Item>
-                      {({ active }) => (
+                      {() => (
                         <Link
                           to="/profile"
-                          className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${active ? 'bg-gray-100' : ''}`}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           Your Profile
                         </Link>
                       )}
                     </Menu.Item>
                     <Menu.Item>
-                      {({ active }) => (
+                      {() => (
                         <Link
                           to="/favorites"
-                          className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${active ? 'bg-gray-100' : ''}`}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           Favorites
                         </Link>
                       )}
                     </Menu.Item>
                     <Menu.Item>
-                      {({ active }) => (
+                      {() => (
                         <Link
                           to="/my-listings"
-                          className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${active ? 'bg-gray-100' : ''}`}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           My Listings
                         </Link>
                       )}
                     </Menu.Item>
                     <Menu.Item>
-                      {({ active }) => (
+                      {() => (
                         <button
                           onClick={handleLogout}
-                          className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${active ? 'bg-gray-100' : ''}`}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
                           Sign out
                         </button>

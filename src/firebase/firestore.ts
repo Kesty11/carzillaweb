@@ -460,4 +460,31 @@ export const getFavoriteCars = async (userId: string): Promise<Car[]> => {
     console.error('Error getting favorite cars:', error);
     throw new Error(error.message);
   }
+};
+
+// Fix the fetchSimilarCars function
+export const fetchSimilarCars = async (car: Car): Promise<Car[]> => {
+  try {
+    const carsRef = collection(db, 'cars');
+    const q = query(
+      carsRef,
+      where('make', '==', car.make),
+      where('id', '!=', car.id),
+      limit(3)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Car[];
+  } catch (error) {
+    console.error('Error fetching similar cars:', error);
+    return [];
+  }
+};
+
+// Fix the generateCarId function
+export const generateCarId = (): string => {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }; 

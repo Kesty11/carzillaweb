@@ -15,7 +15,9 @@ import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Create Firestore context type
 type FirestoreContextType = {
-  // Car operations
+  cars: Car[];
+  loading: boolean;
+  error: string | null;
   fetchCars: (
     filters?: CarFilter,
     sortBy?: string,
@@ -56,6 +58,9 @@ type FirestoreContextType = {
 
 // Create context with default values
 const FirestoreContext = createContext<FirestoreContextType>({
+  cars: [],
+  loading: false,
+  error: null,
   fetchCars: async () => ({ cars: [], lastVisible: undefined }),
   fetchCarById: async () => null,
   fetchSimilarCars: async () => [],
@@ -168,6 +173,9 @@ export const FirestoreProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const value = {
+    cars: [],
+    loading: false,
+    error: null,
     fetchCars,
     fetchCarById,
     fetchSimilarCars,
