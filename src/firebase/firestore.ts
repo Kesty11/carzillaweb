@@ -3,7 +3,6 @@ import {
   doc, 
   getDocs, 
   getDoc, 
-  setDoc, 
   addDoc, 
   updateDoc, 
   deleteDoc, 
@@ -14,7 +13,8 @@ import {
   startAfter,
   serverTimestamp,
   DocumentData,
-  QueryDocumentSnapshot
+  QueryDocumentSnapshot,
+  QueryConstraint
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './config';
@@ -191,49 +191,27 @@ export const getCarById = async (id: string): Promise<Car | null> => {
 export const getSimilarCars = async (
   carId: string,
   brand: string,
-  model: string,
   bodyType: string,
-  limit: number = 3
+  maxResults: number
 ): Promise<Car[]> => {
   try {
-    // Query for cars with the same brand or body type, excluding the current car
-    const q = query(
-      collection(db, 'cars'),
-      where('id', '!=', carId),
+    const carsRef = collection(db, 'cars');
+    const constraints: QueryConstraint[] = [
+      where('brand', '==', brand),
       where('bodyType', '==', bodyType),
-      limit
-    );
-    
+      where('id', '!=', carId),
+      limit(maxResults)
+    ];
+    const q = query(carsRef, ...constraints);
     const querySnapshot = await getDocs(q);
-    
     const similarCars: Car[] = [];
     querySnapshot.forEach((doc) => {
       similarCars.push({ id: doc.id, ...doc.data() } as Car);
     });
-    
-    // If we don't have enough similar cars, get cars with the same brand
-    if (similarCars.length < limit) {
-      const brandQuery = query(
-        collection(db, 'cars'),
-        where('id', '!=', carId),
-        where('brand', '==', brand),
-        limit(limit - similarCars.length)
-      );
-      
-      const brandQuerySnapshot = await getDocs(brandQuery);
-      
-      brandQuerySnapshot.forEach((doc) => {
-        // Check if this car is not already in the similar cars array
-        if (!similarCars.some(car => car.id === doc.id)) {
-          similarCars.push({ id: doc.id, ...doc.data() } as Car);
-        }
-      });
-    }
-    
     return similarCars;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting similar cars:', error);
-    throw new Error(error.message);
+    return [];
   }
 };
 
@@ -468,7 +446,7 @@ export const fetchSimilarCars = async (car: Car): Promise<Car[]> => {
     const carsRef = collection(db, 'cars');
     const q = query(
       carsRef,
-      where('make', '==', car.make),
+      where('brand', '==', car.brand),
       where('id', '!=', car.id),
       limit(3)
     );

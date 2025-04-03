@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { HeartIcon, ShareIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, TagIcon, TruckIcon, ClockIcon, UserIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { HeartIcon, ArrowsPointingOutIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, ChevronRightIcon as ChevronRightIconSolid } from '@heroicons/react/24/solid';
 
 // Types

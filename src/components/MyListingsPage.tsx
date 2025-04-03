@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFirestore } from '../contexts/FirestoreContext';
+import { Car } from '../firebase/firestore';
 
 export default function MyListingsPage() {
   const { currentUser } = useAuth();
   const { getCars, deleteCar } = useFirestore();
   const navigate = useNavigate();
   
-  const [userListings, setUserListings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [listings, setListings] = useState<Car[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
@@ -29,49 +30,40 @@ export default function MyListingsPage() {
     try {
       setLoading(true);
       setError('');
-      // Use the userId to fetch cars created by this user
-      const filter = { userId: currentUser.uid };
-      const { cars, error } = await getCars(filter);
-      
-      if (error) {
-        setError(error);
-        return;
-      }
-      
-      setUserListings(cars || []);
-    } catch (error: any) {
-      console.error('Error fetching user listings:', error);
-      setError('Failed to load your listings. Please try again later.');
+      const result = await getCars();
+      setListings(result);
+    } catch (err) {
+      console.error('Error loading listings:', err);
+      setError('Failed to load listings');
     } finally {
       setLoading(false);
     }
   };
   
-  const handleDeleteCar = async (carId: string) => {
+  const handleDelete = async (carId: string) => {
     if (!currentUser) return;
     
     try {
       setIsDeleting(true);
       setDeletingId(carId);
       
-      const { error } = await deleteCar(carId);
+      await deleteCar(carId);
       
-      if (error) {
-        setError(error);
-        return;
-      }
-      
-      // Remove the car from the local state
-      setUserListings(userListings.filter(car => car.id !== carId));
-    } catch (error: any) {
-      console.error('Error deleting car:', error);
-      setError('Failed to delete the car. Please try again.');
+      // Refresh listings after deletion
+      const result = await getCars();
+      setListings(result);
+    } catch (err) {
+      console.error('Error deleting listing:', err);
+      setError('Failed to delete the listing. Please try again.');
     } finally {
       setIsDeleting(false);
       setDeletingId(null);
     }
   };
   
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="md:flex md:items-center md:justify-between">
@@ -100,72 +92,7 @@ export default function MyListingsPage() {
       )}
       
       <div className="mt-8">
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">Loading your listings...</p>
-          </div>
-        ) : userListings.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <ul className="divide-y divide-gray-200">
-              {userListings.map((car) => (
-                <li key={car.id}>
-                  <div className="px-4 py-4 flex items-center sm:px-6">
-                    <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between">
-                      <div className="flex">
-                        <div className="flex-shrink-0 h-20 w-20 bg-gray-200 rounded">
-                          {car.images && car.images[0] && (
-                            <img
-                              src={car.images[0]}
-                              alt={`${car.brand} ${car.model}`}
-                              className="h-20 w-20 object-cover rounded"
-                            />
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <h3 className="text-lg font-medium text-primary-600 truncate">
-                            {car.brand} {car.model} {car.year}
-                          </h3>
-                          <p className="mt-1 text-sm text-gray-500">
-                            {car.variant} • {car.bodyType} • {car.fuelType} • {car.transmission}
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-gray-900">
-                            ₹{car.price.toLocaleString()} • {car.mileage} km
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Listed on {new Date(car.createdAt?.toDate()).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="ml-5 flex-shrink-0 flex space-x-2">
-                      <button
-                        onClick={() => navigate(`/car/${car.id}`)}
-                        className="text-primary-600 hover:text-primary-900 font-medium text-sm"
-                      >
-                        View
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        onClick={() => navigate(`/edit-car/${car.id}`)}
-                        className="text-primary-600 hover:text-primary-900 font-medium text-sm"
-                      >
-                        Edit
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        onClick={() => handleDeleteCar(car.id)}
-                        disabled={isDeleting && deletingId === car.id}
-                        className="text-red-600 hover:text-red-900 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isDeleting && deletingId === car.id ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
+        {listings.length === 0 ? (
           <div className="text-center py-12 bg-white shadow rounded-lg">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path
@@ -187,6 +114,23 @@ export default function MyListingsPage() {
                 List Your First Car
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {listings.map((car) => (
+              <div key={car.id} className="border rounded-lg p-4">
+                <h2 className="text-xl font-semibold">{car.title}</h2>
+                <p className="text-gray-600">{car.brand} {car.model}</p>
+                <p className="text-primary-600 font-bold">₹{car.price.toLocaleString()}</p>
+                <button
+                  onClick={() => handleDelete(car.id!)}
+                  disabled={isDeleting && deletingId === car.id}
+                  className="mt-4 text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting && deletingId === car.id ? 'Deleting...' : 'Delete Listing'}
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

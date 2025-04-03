@@ -1,74 +1,46 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { 
-  getCars, 
+  getCars as getFirestoreCars, 
   getCarById, 
   getSimilarCars, 
-  addCar, 
-  updateCar, 
-  deleteCar, 
-  toggleFavoriteCar, 
-  getFavoriteCars,
-  Car,
-  CarFilter
+  addCar as addFirestoreCar, 
+  updateCar as updateFirestoreCar, 
+  deleteCar as deleteFirestoreCar, 
+  toggleFavoriteCar as toggleFirestoreFavoriteCar, 
+  getFavoriteCars as getFirestoreFavoriteCars,
+  Car
 } from '../firebase/firestore';
-import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 // Create Firestore context type
-type FirestoreContextType = {
+interface FirestoreContextType {
   cars: Car[];
   loading: boolean;
   error: string | null;
-  fetchCars: (
-    filters?: CarFilter,
-    sortBy?: string,
-    sortOrder?: 'asc' | 'desc',
-    itemsPerPage?: number,
-    lastVisible?: QueryDocumentSnapshot<DocumentData>
-  ) => Promise<{ cars: Car[]; lastVisible: QueryDocumentSnapshot<DocumentData> | undefined }>;
-  
+  fetchCars: () => Promise<void>;
   fetchCarById: (id: string) => Promise<Car | null>;
-  
-  fetchSimilarCars: (
-    carId: string, 
-    brand: string, 
-    model: string, 
-    bodyType: string, 
-    limit?: number
-  ) => Promise<Car[]>;
-  
-  createCar: (
-    carData: Omit<Car, 'id' | 'createdAt' | 'updatedAt' | 'images'>, 
-    imageFiles: File[]
-  ) => Promise<{ id: string }>;
-  
-  modifyCar: (
-    carId: string, 
-    carData: Partial<Car>,
-    newImageFiles?: File[],
-    deletedImageUrls?: string[]
-  ) => Promise<void>;
-  
-  removeCar: (carId: string) => Promise<void>;
-  
-  // Favorites operations
-  toggleFavorite: (userId: string, carId: string, isFavorite: boolean) => Promise<void>;
-  
-  fetchFavoriteCars: (userId: string) => Promise<Car[]>;
-};
+  fetchSimilarCars: (car: Car) => Promise<Car[]>;
+  addCar: (car: Omit<Car, 'id' | 'createdAt' | 'updatedAt' | 'images'>, imageFiles: File[]) => Promise<string>;
+  updateCar: (id: string, car: Partial<Car>) => Promise<void>;
+  deleteCar: (id: string) => Promise<void>;
+  toggleFavoriteCar: (userId: string, carId: string, isFavorite: boolean) => Promise<void>;
+  getFavoriteCars: (userId: string) => Promise<Car[]>;
+  getCars: () => Promise<Car[]>;
+}
 
 // Create context with default values
 const FirestoreContext = createContext<FirestoreContextType>({
   cars: [],
   loading: false,
   error: null,
-  fetchCars: async () => ({ cars: [], lastVisible: undefined }),
+  fetchCars: async () => {},
   fetchCarById: async () => null,
   fetchSimilarCars: async () => [],
-  createCar: async () => ({ id: '' }),
-  modifyCar: async () => {},
-  removeCar: async () => {},
-  toggleFavorite: async () => {},
-  fetchFavoriteCars: async () => []
+  addCar: async () => '',
+  updateCar: async () => {},
+  deleteCar: async () => {},
+  toggleFavoriteCar: async () => {},
+  getFavoriteCars: async () => [],
+  getCars: async () => []
 });
 
 // Hook to use Firestore context
@@ -78,112 +50,139 @@ export const useFirestore = () => {
 
 // Firestore provider component
 export const FirestoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [cars, setCars] = React.useState<Car[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
   // Car operations
-  const fetchCars = async (
-    filters: CarFilter = {},
-    sortBy: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc',
-    itemsPerPage: number = 10,
-    lastVisible?: QueryDocumentSnapshot<DocumentData>
-  ) => {
+  const fetchCars = async () => {
     try {
-      return await getCars(filters, sortBy, sortOrder, itemsPerPage, lastVisible);
+      const result = await getFirestoreCars();
+      setCars(result.cars);
+      setLoading(false);
     } catch (error) {
       console.error('Error in fetchCars:', error);
-      return { cars: [], lastVisible: undefined };
+      setError('Error fetching cars');
+      setLoading(false);
     }
   };
 
   const fetchCarById = async (id: string) => {
     try {
-      return await getCarById(id);
+      const car = await getCarById(id);
+      setLoading(false);
+      return car;
     } catch (error) {
       console.error('Error in fetchCarById:', error);
+      setError('Error fetching car');
+      setLoading(false);
       return null;
     }
   };
 
-  const fetchSimilarCars = async (
-    carId: string, 
-    brand: string, 
-    model: string, 
-    bodyType: string, 
-    limit: number = 3
-  ) => {
+  const fetchSimilarCars = async (car: Car) => {
     try {
-      return await getSimilarCars(carId, brand, model, bodyType, limit);
+      if (!car.id) return [];
+      const result = await getSimilarCars(car.id, car.brand, car.bodyType, 3);
+      setLoading(false);
+      return result;
     } catch (error) {
       console.error('Error in fetchSimilarCars:', error);
+      setError('Error fetching similar cars');
+      setLoading(false);
       return [];
     }
   };
 
-  const createCar = async (
-    carData: Omit<Car, 'id' | 'createdAt' | 'updatedAt' | 'images'>, 
-    imageFiles: File[]
-  ) => {
+  const addCar = async (car: Omit<Car, 'id' | 'createdAt' | 'updatedAt' | 'images'>, imageFiles: File[]): Promise<string> => {
     try {
-      return await addCar(carData, imageFiles);
+      const result = await addFirestoreCar(car, imageFiles);
+      setLoading(false);
+      return result.id;
     } catch (error) {
-      console.error('Error in createCar:', error);
+      console.error('Error in addCar:', error);
+      setError('Error adding car');
+      setLoading(false);
       throw error;
     }
   };
 
-  const modifyCar = async (
-    carId: string, 
-    carData: Partial<Car>,
-    newImageFiles?: File[],
-    deletedImageUrls?: string[]
-  ) => {
+  const updateCar = async (id: string, car: Partial<Car>): Promise<void> => {
     try {
-      await updateCar(carId, carData, newImageFiles, deletedImageUrls);
+      await updateFirestoreCar(id, car);
+      setLoading(false);
     } catch (error) {
-      console.error('Error in modifyCar:', error);
+      console.error('Error in updateCar:', error);
+      setError('Error updating car');
+      setLoading(false);
       throw error;
     }
   };
 
-  const removeCar = async (carId: string) => {
+  const deleteCar = async (id: string): Promise<void> => {
     try {
-      await deleteCar(carId);
+      await deleteFirestoreCar(id);
+      setLoading(false);
     } catch (error) {
-      console.error('Error in removeCar:', error);
+      console.error('Error in deleteCar:', error);
+      setError('Error deleting car');
+      setLoading(false);
       throw error;
     }
   };
 
-  // Favorites operations
-  const toggleFavorite = async (userId: string, carId: string, isFavorite: boolean) => {
+  const toggleFavoriteCar = async (userId: string, carId: string, isFavorite: boolean): Promise<void> => {
     try {
-      await toggleFavoriteCar(userId, carId, isFavorite);
+      await toggleFirestoreFavoriteCar(userId, carId, isFavorite);
+      setLoading(false);
     } catch (error) {
-      console.error('Error in toggleFavorite:', error);
+      console.error('Error in toggleFavoriteCar:', error);
+      setError('Error toggling favorite car');
+      setLoading(false);
       throw error;
     }
   };
 
-  const fetchFavoriteCars = async (userId: string) => {
+  const getFavoriteCars = async (userId: string): Promise<Car[]> => {
     try {
-      return await getFavoriteCars(userId);
+      const result = await getFirestoreFavoriteCars(userId);
+      setLoading(false);
+      return result;
     } catch (error) {
-      console.error('Error in fetchFavoriteCars:', error);
+      console.error('Error in getFavoriteCars:', error);
+      setError('Error fetching favorite cars');
+      setLoading(false);
+      return [];
+    }
+  };
+
+  const getCars = async (): Promise<Car[]> => {
+    try {
+      const result = await getFirestoreCars();
+      setCars(result.cars);
+      setLoading(false);
+      return result.cars;
+    } catch (error) {
+      console.error('Error in getCars:', error);
+      setError('Error fetching cars');
+      setLoading(false);
       return [];
     }
   };
 
   const value = {
-    cars: [],
-    loading: false,
-    error: null,
+    cars,
+    loading,
+    error,
     fetchCars,
     fetchCarById,
     fetchSimilarCars,
-    createCar,
-    modifyCar,
-    removeCar,
-    toggleFavorite,
-    fetchFavoriteCars
+    addCar,
+    updateCar,
+    deleteCar,
+    toggleFavoriteCar,
+    getFavoriteCars,
+    getCars
   };
 
   return (

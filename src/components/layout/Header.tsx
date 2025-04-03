@@ -1,8 +1,7 @@
-import { useState, Fragment } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Dialog, Popover, Menu } from '@headlessui/react';
+import { Dialog } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { ChevronDownIcon } from '@heroicons/react/20/solid';
 
 const navigation = {
   categories: [

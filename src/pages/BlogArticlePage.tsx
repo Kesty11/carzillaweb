@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ChevronLeftIcon, ClockIcon, UserIcon, ChatBubbleLeftIcon, ShareIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ClockIcon, UserIcon, ShareIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 
 // Import same types from BlogPage
 type BlogPost = {
